@@ -11,5 +11,6 @@ rust:
   - nightly
 matrix:
   allow_failures:
-    - rust: nightly
+    - rust: beta
+    - rust: nigthly
   fast_finish: true
