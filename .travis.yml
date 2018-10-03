@@ -1,4 +1,10 @@
 language: rust
+before_script:
+- rustup component add rustfmt-preview
+script:
+- cargo fmt --all -- --check
+- cargo build
+- cargo test
 rust:
   - stable
   - beta
