@@ -101,23 +101,23 @@ SHA256: 1adc99a0257cec154bdc89a1c6974ecc373b6bd4018e5851d15d28e7cdf57ad3";
         let cursor = Cursor::new(packages_str);
         let packages = parse_packages(cursor);
 
-        let aapt_package = packages.get("aapt").unwrap();
-        assert_eq!("aapt", aapt_package.fields.get("Package").unwrap());
-        assert_eq!("2772", aapt_package.fields.get("Installed-Size").unwrap());
+        let aapt_package = &packages["aapt"];
+        assert_eq!("aapt", aapt_package.fields["Package"]);
+        assert_eq!("2772", aapt_package.fields["Installed-Size"]);
 
-        let abduco_package = packages.get("abduco").unwrap();
-        assert_eq!("abduco", abduco_package.fields.get("Package").unwrap());
-        assert_eq!("68", abduco_package.fields.get("Installed-Size").unwrap());
+        let abduco_package = &packages["abduco"];
+        assert_eq!("abduco", abduco_package.fields["Package"]);
+        assert_eq!("68", abduco_package.fields["Installed-Size"]);
     }
 
     #[test]
     fn test_fetch_repo() {
         let packages = fetch_repo("aarch64");
 
-        let abduco_package = packages.get("abduco").unwrap();
+        let abduco_package = &packages["abduco"];
         assert_eq!(
             "Clean and simple terminal session manager",
-            abduco_package.fields.get("Description").unwrap()
+            abduco_package.fields["Description"]
         );
     }
 
