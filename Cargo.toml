@@ -9,7 +9,7 @@ ar = { git = "https://github.com/fornwall/rust-ar", branch = "read-exact" }
 md5 = "0.4"
 rust-lzma = "0.3"
 structopt = "0.2"
-reqwest = "0.9.2"
+reqwest = "0.9"
 tar = "0.4"
 walkdir = "2"
 zip = { version = "0.4", features = ["deflate-zlib"], default-features = false }
