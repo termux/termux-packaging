@@ -19,6 +19,7 @@ mod deb_file;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "termux-packaging", author = "")]
+#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
 /// Termux packaging tools.
 enum Opt {
     #[structopt(name = "bootstraps", author = "")]
