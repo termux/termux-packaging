@@ -2,7 +2,6 @@ extern crate ar;
 extern crate lzma;
 extern crate md5;
 extern crate reqwest;
-#[macro_use]
 extern crate structopt;
 extern crate tar;
 extern crate walkdir;
