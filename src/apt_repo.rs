@@ -70,7 +70,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use apt_repo::{fetch_repo, parse_packages};
+    use super::*;
     use std::io::Cursor;
 
     #[test]
