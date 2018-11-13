@@ -5,7 +5,7 @@ authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 
 [dependencies]
 ar = "0.6.1"
-md5 = "0.4"
+md5 = "0.6"
 rust-lzma = "0.3"
 structopt = "0.2"
 reqwest = "0.9"
