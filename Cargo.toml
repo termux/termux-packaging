@@ -4,8 +4,7 @@ version = "0.1.0"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 
 [dependencies]
-# Use ar fork until https://github.com/mdsteele/rust-ar/pull/8 has been merged:
-ar = { git = "https://github.com/fornwall/rust-ar", branch = "read-exact" }
+ar = "0.6.1"
 md5 = "0.4"
 rust-lzma = "0.3"
 structopt = "0.2"
