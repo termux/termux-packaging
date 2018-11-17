@@ -2,7 +2,7 @@ use apt_repo::fetch_repo;
 use deb_file::{visit_files, DebVisitor};
 use md5;
 use reqwest;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{File, OpenOptions};
 use std::io::{copy, Read, Result, Write};
 use std::path::PathBuf;
@@ -30,6 +30,7 @@ pub struct CreateBootstrapVisitor {
     dpkg_status: Vec<u8>,
     symlinks_txt: Vec<u8>,
     package_digests: Vec<u8>,
+    file_entries: HashSet<String>,
 }
 
 fn write_zip_file(zip_writer: &mut ZipWriter<File>, file_name: &str, file_contents: &mut Read) {
@@ -43,6 +44,7 @@ fn write_zip_file(zip_writer: &mut ZipWriter<File>, file_name: &str, file_conten
 impl DebVisitor for CreateBootstrapVisitor {
     fn visit_control(&mut self, fields: HashMap<String, String>) {
         self.package_digests.clear();
+        self.file_entries.clear();
 
         for (key, value) in &fields {
             match key.as_str() {
@@ -104,6 +106,8 @@ impl DebVisitor for CreateBootstrapVisitor {
             };
             copy(&mut tee, &mut self.zip_writer).expect("Error copying from tar to zip");
         }
+
+        self.file_entries.insert(file_path_full.clone());
 
         let digest = md5_context.compute();
         self.package_digests
@@ -175,7 +179,32 @@ pub fn create(output: &str) {
                 dpkg_status: Vec::new(),
                 symlinks_txt: Vec::new(),
                 package_digests: Vec::new(),
+                // All files, directories and symlinks added, for "var/lib/dpkg/info/$PKG.list".
+                file_entries: HashSet::new(),
             };
+
+            // The app needs directories to appear before files.
+            for dir in vec![
+                "etc/apt/preferences.d/",
+                "etc/apt/apt.conf.d/",
+                "var/cache/apt/archives/partial/",
+                "var/log/apt/",
+                "tmp/",
+                "var/lib/dpkg/triggers/",
+                "var/lib/dpkg/updates/",
+            ].iter()
+            {
+                visitor
+                    .zip_writer
+                    .add_directory(*dir, FileOptions::default())
+                    .expect("Error creating dir");
+            }
+
+            // This needs to be an empty file, else removing a package fails:
+            visitor
+                .zip_writer
+                .start_file("var/lib/dpkg/available", FileOptions::default())
+                .expect("Unable to create var/lib/dpkg/available");
 
             let packages = fetch_repo(arch);
             for bootstrap_package_name in &bootstrap_packages {
@@ -193,6 +222,42 @@ pub fn create(output: &str) {
                     .unwrap_or_else(|_| panic!("Failed fetching {}", package_url));
 
                 visit_files(&mut response, &mut visitor);
+
+                {
+                    let mut added_paths: HashSet<&str> = HashSet::new();
+                    let mut list_buffer: Vec<u8> = Vec::new();
+                    for path in &visitor.file_entries {
+                        if added_paths.insert(path) {
+                            list_buffer
+                                .write_all(&format!("/{}\n", path).as_bytes())
+                                .expect("Error writing to list buffer");
+                        }
+                    }
+
+                    // dpkg wants folders to be present as well:
+                    for path in &visitor.file_entries {
+                        let mut slash_search = path.find('/');
+                        while let Some(index) = slash_search {
+                            let sub_string = &path[0..index];
+                            if added_paths.insert(sub_string) {
+                                list_buffer
+                                    .write_all(&format!("/{}\n", sub_string).as_bytes())
+                                    .expect("Error writing to list buffer");
+                            }
+                            slash_search = path[(index + 1)..].find('/');
+                            if let Some(new_index) = slash_search {
+                                slash_search = Some(new_index + index + 1);
+                            }
+                        }
+                    }
+
+                    let list_path = format!("var/lib/dpkg/info/{}.list", bootstrap_package_name);
+                    write_zip_file(
+                        &mut visitor.zip_writer,
+                        list_path.as_str(),
+                        &mut &list_buffer[..],
+                    );
+                }
 
                 let digests_file_path =
                     format!("var/lib/dpkg/info/{}.md5sums", bootstrap_package_name);
