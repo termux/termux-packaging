@@ -4,12 +4,12 @@ version = "0.1.0"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 
 [dependencies]
-ar = "0.6.1"
-md5 = "0.6"
-rust-lzma = "0.3"
-structopt = "0.2"
-reqwest = "0.9"
-tar = "0.4"
-walkdir = "2"
-zip = { version = "0.4", features = ["deflate-zlib"], default-features = false }
+ar = "*"
+md5 = "*"
+rust-lzma = "*"
+structopt = "*"
+reqwest = "*"
+tar = "*"
+walkdir = "*"
+zip = { version = "*", features = ["deflate-zlib"], default-features = false }
 
