@@ -88,8 +88,10 @@ impl DebVisitor for CreateBootstrapVisitor {
                             "{}←{}\n",
                             header.link_name().unwrap().unwrap().to_str().unwrap(),
                             relative_path
-                        ).as_bytes(),
-                    ).expect("Error appending to SYMLINKS.txt");
+                        )
+                        .as_bytes(),
+                    )
+                    .expect("Error appending to SYMLINKS.txt");
                 return;
             }
 
@@ -192,7 +194,8 @@ pub fn create(output: &str) {
                 "tmp/",
                 "var/lib/dpkg/triggers/",
                 "var/lib/dpkg/updates/",
-            ].iter()
+            ]
+            .iter()
             {
                 visitor
                     .zip_writer
