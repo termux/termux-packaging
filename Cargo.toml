@@ -13,3 +13,5 @@ tar = "*"
 walkdir = "*"
 zip = { version = "*", features = ["deflate-zlib"], default-features = false }
 
+[profile.release]
+lto = true
