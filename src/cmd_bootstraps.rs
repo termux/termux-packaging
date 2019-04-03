@@ -155,6 +155,9 @@ pub fn create(output: &str) {
         // For package management:
         "dpkg",
         "apt",
+        "termux-keyring",
+        "game-repo",
+        "science-repo",
     ];
 
     let arch_all_packages = fetch_repo("all");
