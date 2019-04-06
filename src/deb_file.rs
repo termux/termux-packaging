@@ -1,4 +1,5 @@
 use ar;
+use libflate;
 use lzma;
 use std;
 use std::collections::HashMap;
@@ -15,7 +16,7 @@ pub trait DebVisitor {
 fn parse_control_ar_entry<R: std::io::Read>(ar_entry: ar::Entry<R>) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
-    let reader = lzma::reader::LzmaReader::new_decompressor(ar_entry).expect("Error decompressing");
+    let reader = libflate::gzip::Decoder::new(ar_entry).expect("Error decompressing");
     let mut control_tar = tar::Archive::new(reader);
     for file in control_tar.entries().unwrap() {
         let mut file = file.unwrap();
@@ -65,7 +66,7 @@ where
 
         {
             let entry_name = std::str::from_utf8(entry.header().identifier()).unwrap();
-            if "control.tar.xz" == entry_name {
+            if "control.tar.gz" == entry_name {
                 control_tar = true;
             } else if "data.tar.xz" == entry_name {
                 data_tar = true;

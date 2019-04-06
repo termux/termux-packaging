@@ -5,10 +5,11 @@ authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
 
 [dependencies]
 ar = "*"
+libflate = "*"
 md5 = "*"
+reqwest = "*"
 rust-lzma = "*"
 structopt = "*"
-reqwest = "*"
 tar = "*"
 walkdir = "*"
 zip = { version = "*", features = ["deflate-zlib"], default-features = false }

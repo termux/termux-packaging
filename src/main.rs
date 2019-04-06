@@ -1,4 +1,5 @@
 extern crate ar;
+extern crate libflate;
 extern crate lzma;
 extern crate md5;
 extern crate reqwest;
