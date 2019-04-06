@@ -28,6 +28,7 @@ impl<'a, R: Read, W: Write> Read for TeeReader<'a, R, W> {
 pub struct CreateBootstrapVisitor {
     zip_writer: ZipWriter<File>,
     dpkg_status: Vec<u8>,
+    conffiles: Vec<u8>,
     symlinks_txt: Vec<u8>,
     package_digests: Vec<u8>,
     file_entries: HashSet<String>,
@@ -43,9 +44,6 @@ fn write_zip_file(zip_writer: &mut ZipWriter<File>, file_name: &str, file_conten
 
 impl DebVisitor for CreateBootstrapVisitor {
     fn visit_control(&mut self, fields: HashMap<String, String>) {
-        self.package_digests.clear();
-        self.file_entries.clear();
-
         for (key, value) in &fields {
             match key.as_str() {
                 "Filename" | "MD5Sum" | "SHA1" | "SHA256" | "Size" => {
@@ -61,6 +59,13 @@ impl DebVisitor for CreateBootstrapVisitor {
         self.dpkg_status
             .write_all(b"Status: install ok installed\n\n")
             .expect("Error writing to dpkg/status")
+    }
+
+    fn visit_conffiles<T>(&mut self, file: &mut tar::Entry<T>)
+    where
+        T: Read,
+    {
+        copy(file, &mut self.conffiles).expect("Error copying conffiles");
     }
 
     fn visit_file<T>(&mut self, file: &mut tar::Entry<T>)
@@ -182,6 +187,7 @@ pub fn create(output: &str) {
             let mut visitor = CreateBootstrapVisitor {
                 zip_writer: ZipWriter::new(output_zip_file),
                 dpkg_status: Vec::new(),
+                conffiles: Vec::new(),
                 symlinks_txt: Vec::new(),
                 package_digests: Vec::new(),
                 // All files, directories and symlinks added, for "var/lib/dpkg/info/$PKG.list".
@@ -227,6 +233,9 @@ pub fn create(output: &str) {
                     .send()
                     .unwrap_or_else(|_| panic!("Failed fetching {}", package_url));
 
+                visitor.package_digests.clear();
+                visitor.file_entries.clear();
+                visitor.conffiles.clear();
                 visit_files(&mut response, &mut visitor);
 
                 {
@@ -263,6 +272,16 @@ pub fn create(output: &str) {
                         list_path.as_str(),
                         &mut &list_buffer[..],
                     );
+
+                    if !visitor.conffiles.is_empty() {
+                        let conffiles_path =
+                            format!("var/lib/dpkg/info/{}.conffiles", bootstrap_package_name);
+                        write_zip_file(
+                            &mut visitor.zip_writer,
+                            conffiles_path.as_str(),
+                            &mut &visitor.conffiles[..],
+                        );
+                    }
                 }
 
                 let digests_file_path =
