@@ -9,8 +9,6 @@ BASE_URL="https://dl.bintray.com/termux/termux-packages-24"
 TERMUX_PREFIX="/data/data/com.termux/files/usr"
 
 read_package_list() {
-	## TODO: fetch list for binary-all in addition to architecture-specific one.
-
 	local architecture=$1
 	local package_name
 
@@ -19,7 +17,12 @@ read_package_list() {
 	while read -d $'\xFF' package; do
 		package_name=$(echo "$package" | grep Package: | awk '{ print $2 }')
 		PACKAGE_METADATA["$package_name"]=$package
-	done < <(curl -Ls "${BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | sed -e "s/^$/\xFF/g")
+	done < <(
+				curl -Ls "${BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | \
+					sed -e "s/^$/\xFF/g"
+				curl -Ls "${BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | \
+					sed -e "s/^$/\xFF/g"
+			)
 }
 
 pull_package() {
