@@ -133,6 +133,7 @@ for package_arch in aarch64 arm i686 x86_64; do
 	pull_package termux-keyring
 	pull_package game-repo
 	pull_package science-repo
+	pull_package zlib
 
 	# Create bootstrap archive.
 	create_bootstrap_archive "$package_arch"
