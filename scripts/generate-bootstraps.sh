@@ -5,43 +5,58 @@
 
 set -e
 
+BOOTSTRAP_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-tmp.XXXXXXXX")
+trap 'rm -rf $BOOTSTRAP_TMPDIR' EXIT
+
 # Can be changed by using '--repository' option.
 REPO_BASE_URL="https://dl.bintray.com/termux/termux-packages-24"
 
 # Can be changed by using '--prefix' option.
 TERMUX_PREFIX="/data/data/com.termux/files/usr"
 
+# Download package lists from remote repository.
+# Actually, there 2 lists are downloaded: one architecture-independent and one
+# for architecture specified as '$1' argument.
 read_package_list() {
-	local architecture=$1
-	local package_name
+	local architecture
+	for architecture in all "$1"; do
+		if [ ! -e "${BOOTSTRAP_TMPDIR}/packages.${architecture}" ]; then
+			echo "[*] Downloading package list for architecture '${architecture}'..."
+			curl \
+				--fail \
+				--location \
+				--output "${BOOTSTRAP_TMPDIR}/packages.${architecture}" \
+				"${REPO_BASE_URL}/dists/stable/main/binary-${architecture}/Packages"
+		fi
 
-	echo "[*] Reading package list for '$architecture'..."
-
-	while read -r -d $'\xFF' package; do
-		package_name=$(echo "$package" | grep Package: | awk '{ print $2 }')
-		PACKAGE_METADATA["$package_name"]=$package
-	done < <(
-				curl -Ls "${REPO_BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | \
-					sed -e "s/^$/\xFF/g"
-				echo
-				curl -Ls "${REPO_BASE_URL}/dists/stable/main/binary-all/Packages" | \
-					sed -e "s/^$/\xFF/g"
-			)
+		echo "[*] Reading package list for '${architecture}'..."
+		while read -r -d $'\xFF' package; do
+			if [ -n "$package" ]; then
+				PACKAGE_METADATA[$(echo "$package" | grep Package: | awk '{ print $2 }')]="$package"
+			fi
+		done < <(sed -e "s/^$/\xFF/g" "${BOOTSTRAP_TMPDIR}/packages.${architecture}")
+	done
 }
 
+# Download specified package, its depenencies and then extract *.deb files to
+# the bootstrap root.
 pull_package() {
 	local package_name=$1
 	local package_tmpdir="${BOOTSTRAP_TMPDIR}/${package_name}"
 	mkdir -p "$package_tmpdir"
 
 	local package_url
-	package_url="$REPO_BASE_URL/$(echo "${PACKAGE_METADATA[${package_name}]}" | grep Filename: | awk '{ print $2 }')"
+	package_url="$REPO_BASE_URL/$(echo "${PACKAGE_METADATA[${package_name}]}" | grep -i "^Filename:" | awk '{ print $2 }')"
+	if [ "${package_url}" = "$REPO_BASE_URL" ] || [ "${package_url}" = "${REPO_BASE_URL}/" ]; then
+		echo "[!] Failed to determine URL for package '$package_name'."
+		exit 1
+	fi
 
 	local package_dependencies
 	package_dependencies=$(
 		while read -r -d ',' token; do
 			echo "$token" | cut -d'|' -f1 | sed -E 's@\(.*\)@@'
-		done <<< "$(echo "${PACKAGE_METADATA[${package_name}]}" | grep Depends: | sed -E 's@^Depends:@@')"
+		done <<< "$(echo "${PACKAGE_METADATA[${package_name}]}" | grep -i "^Depends:" | sed -E 's@^[Dd]epends:@@')"
 	)
 
 	# Recursively handle dependencies.
@@ -49,7 +64,7 @@ pull_package() {
 		local dep
 		for dep in $package_dependencies; do
 			if [ ! -e "${BOOTSTRAP_TMPDIR}/${dep}" ]; then
-				pull_package $dep
+				pull_package "$dep"
 			fi
 		done
 		unset dep
@@ -99,32 +114,33 @@ pull_package() {
 		} >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
 
 		# Additional data: conffiles & scripts
-		local file
 		for file in conffiles postinst postrm preinst prerm; do
 			if [ -f "${PWD}/${file}" ]; then
 				cp "$file" "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.${file}"
 			fi
 		done
 	)
+
+	rm -rf "$package_tmpdir"
 }
 
+# Final stage: generate bootstrap archive and place it to current
+# working directory.
+# Information about symlinks is stored in file SYMLINKS.txt.
 create_bootstrap_archive() {
-	local architecture=$1
-
-	echo "[*] Creating 'bootstrap-${architecture}.zip'..."
-
-	# Do not store symlinks in bootstrap archive.
-	# Instead, put all information to SYMLINKS.txt
+	echo "[*] Creating 'bootstrap-${1}.zip'..."
 	(cd "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}"
+		# Do not store symlinks in bootstrap archive.
+		# Instead, put all information to SYMLINKS.txt
 		while read -r -d '' link; do
 			echo "$(readlink "$link")←${link}" >> SYMLINKS.txt
 			rm -f "$link"
 		done < <(find . -type l -print0)
 
-		zip -r9 "${BOOTSTRAP_TMPDIR}/bootstrap-${architecture}.zip" ./*
+		zip -r9 "${BOOTSTRAP_TMPDIR}/bootstrap-${1}.zip" ./*
 	)
 
-	mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${architecture}.zip" ./
+	mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${1}.zip" ./
 }
 
 show_usage() {
@@ -160,7 +176,7 @@ while (($# > 0)); do
 				TERMUX_PREFIX="$2"
 				shift 1
 			else
-				echo "[!] Option '--repository' requires an argument."
+				echo "[!] Option '--prefix' requires an argument."
 				show_usage
 				exit 1
 			fi
@@ -184,11 +200,8 @@ while (($# > 0)); do
 	shift 1
 done
 
-declare -A PACKAGE_METADATA
-
 for package_arch in aarch64 arm i686 x86_64; do
-	BOOTSTRAP_TMPDIR=$(mktemp -d /tmp/bootstrap-tmp.XXXXXXXX)
-	BOOTSTRAP_ROOTFS="$BOOTSTRAP_TMPDIR/rootfs-$package_arch"
+	BOOTSTRAP_ROOTFS="$BOOTSTRAP_TMPDIR/rootfs-${package_arch}"
 
 	# Create initial directories for $TERMUX_PREFIX
 	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/etc/apt/apt.conf.d"
@@ -202,13 +215,17 @@ for package_arch in aarch64 arm i686 x86_64; do
 	touch "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/available"
 	touch "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
 
-	# Read metadata for all available packages.
+	# Read package metadata.
+	unset PACKAGE_METADATA
+	declare -A PACKAGE_METADATA
 	read_package_list "$package_arch"
 
-	# Download and extract specified packages and their dependencies.
+	# Package manager.
 	pull_package apt
 	pull_package game-repo
 	pull_package science-repo
+
+	# Core utilities.
 	pull_package bash
 	pull_package busybox
 	pull_package command-not-found
@@ -218,7 +235,4 @@ for package_arch in aarch64 arm i686 x86_64; do
 
 	# Create bootstrap archive.
 	create_bootstrap_archive "$package_arch"
-
-	# Delete temporary directory once finished.
-	rm -rf "$BOOTSTRAP_TMPDIR"
 done
