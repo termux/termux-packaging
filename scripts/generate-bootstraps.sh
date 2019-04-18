@@ -5,8 +5,8 @@
 
 set -e
 
-BASE_URL="https://dl.bintray.com/termux/termux-packages-24"
-TERMUX_PREFIX="/data/data/com.termux/files/usr"
+: "${BASE_URL:="https://dl.bintray.com/termux/termux-packages-24"}"
+: "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
 
 read_package_list() {
 	local architecture=$1
@@ -20,7 +20,8 @@ read_package_list() {
 	done < <(
 				curl -Ls "${BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | \
 					sed -e "s/^$/\xFF/g"
-				curl -Ls "${BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | \
+				echo
+				curl -Ls "${BASE_URL}/dists/stable/main/binary-all/Packages" | \
 					sed -e "s/^$/\xFF/g"
 			)
 }
@@ -40,16 +41,36 @@ pull_package() {
 	(cd "$package_tmpdir"
 		ar x package.deb
 
+		# data.tar may have extension different from .xz
+		if [ -f "./data.tar.xz" ]; then
+			data_archive="data.tar.xz"
+		elif [ -f "./data.tar.gz" ]; then
+			data_archive="data.tar.gz"
+		else
+			echo "No data.tar.* found in '$package_name'."
+			exit 1
+		fi
+
+		# Do same for control.tar.
+		if [ -f "./control.tar.xz" ]; then
+			control_archive="control.tar.xz"
+		elif [ -f "./control.tar.gz" ]; then
+			control_archive="control.tar.gz"
+		else
+			echo "No control.tar.* found in '$package_name'."
+			exit 1
+		fi
+
 		# Extract files.
-		tar xf data.tar.xz -C "$BOOTSTRAP_ROOTFS"
-		tar tf data.tar.xz > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
+		tar xf "$data_archive" -C "$BOOTSTRAP_ROOTFS"
+		tar tf "$data_archive" > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
 
 		# Generate checksums (md5).
-		tar xf data.tar.xz
+		tar xf "$data_archive"
 		find data -type f | xargs -r md5sum | sed 's@^\.$@@g' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.md5sums"
 
 		# Extract metadata.
-		tar xf control.tar.gz
+		tar xf "$control_archive"
 		cat control >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
 		echo "Status: install ok installed" >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
 		echo >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
