@@ -14,6 +14,10 @@ REPO_BASE_URL="https://dl.bintray.com/termux/termux-packages-24"
 # Can be changed by using '--prefix' option.
 TERMUX_PREFIX="/data/data/com.termux/files/usr"
 
+# A list of non-essential packages. By default it is empty, but can
+# be filled with option '--add'.
+declare -a ADDITIONAL_PACKAGES
+
 # Check for some important utilities that may not be available for
 # some reason.
 for cmd in ar awk curl grep gzip find sed tar xargs xz zip; do
@@ -51,7 +55,7 @@ read_package_list() {
 # the bootstrap root.
 pull_package() {
 	local package_name=$1
-	local package_tmpdir="${BOOTSTRAP_TMPDIR}/${package_name}"
+	local package_tmpdir="${BOOTSTRAP_PKGDIR}/${package_name}"
 	mkdir -p "$package_tmpdir"
 
 	local package_url
@@ -63,16 +67,16 @@ pull_package() {
 
 	local package_dependencies
 	package_dependencies=$(
-		while read -r -d ',' token; do
+		while read -r token; do
 			echo "$token" | cut -d'|' -f1 | sed -E 's@\(.*\)@@'
-		done <<< "$(echo "${PACKAGE_METADATA[${package_name}]}" | grep -i "^Depends:" | sed -E 's@^[Dd]epends:@@')"
+		done < <(echo "${PACKAGE_METADATA[${package_name}]}" | grep -i "^Depends:" | sed -E 's@^[Dd]epends:@@' | tr ',' '\n')
 	)
 
 	# Recursively handle dependencies.
 	if [ -n "$package_dependencies" ]; then
 		local dep
 		for dep in $package_dependencies; do
-			if [ ! -e "${BOOTSTRAP_TMPDIR}/${dep}" ]; then
+			if [ ! -e "${BOOTSTRAP_PKGDIR}/${dep}" ]; then
 				pull_package "$dep"
 			fi
 		done
@@ -129,8 +133,6 @@ pull_package() {
 			fi
 		done
 	)
-
-	rm -rf "$package_tmpdir"
 }
 
 # Final stage: generate bootstrap archive and place it to current
@@ -162,6 +164,11 @@ show_usage() {
 	echo
 	echo " -h, --help              Show this help."
 	echo
+	echo " -a, --add PKG_LIST      Specify one or more additional packages"
+	echo "                         to include into bootstrap archive."
+	echo "                         Multiple packages should be passed as"
+	echo "                         comma-separated list."
+	echo
 	echo " -p, --prefix PATH       Specify rootfs prefix absolute path."
 	echo "                         Should be exactly same as in packages"
 	echo "                         in the remote repository."
@@ -180,8 +187,21 @@ while (($# > 0)); do
 			show_usage
 			exit 0
 			;;
+		-a|--add)
+			if [ $# -gt 1 ] && [ -n "$2" ] && [[ $2 != -* ]]; then
+				for pkg in $(echo "$2" | tr ',' ' '); do
+					ADDITIONAL_PACKAGES+=("$pkg")
+				done
+				unset pkg
+				shift 1
+			else
+				echo "[!] Option '--add' requires an argument."
+				show_usage
+				exit 1
+			fi
+			;;
 		-p|--prefix)
-			if [ $# -gt 1 ] && [[ $2 != -* ]]; then
+			if [ $# -gt 1 ] && [ -n "$2" ] && [[ $2 != -* ]]; then
 				TERMUX_PREFIX="$2"
 				shift 1
 			else
@@ -191,7 +211,7 @@ while (($# > 0)); do
 			fi
 			;;
 		-r|--repository)
-			if [ $# -gt 1 ] && [[ $2 != -* ]]; then
+			if [ $# -gt 1 ] && [ -n "$2" ] && [[ $2 != -* ]]; then
 				REPO_BASE_URL="$2"
 				shift 1
 			else
@@ -211,6 +231,7 @@ done
 
 for package_arch in aarch64 arm i686 x86_64; do
 	BOOTSTRAP_ROOTFS="$BOOTSTRAP_TMPDIR/rootfs-${package_arch}"
+	BOOTSTRAP_PKGDIR="$BOOTSTRAP_TMPDIR/packages-${package_arch}"
 
 	# Create initial directories for $TERMUX_PREFIX
 	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/etc/apt/apt.conf.d"
@@ -241,6 +262,12 @@ for package_arch in aarch64 arm i686 x86_64; do
 	pull_package dash
 	pull_package termux-tools
 	pull_package termux-exec
+
+	# Handle additional packages.
+	for add_pkg in "${ADDITIONAL_PACKAGES[@]}"; do
+		pull_package "$add_pkg"
+	done
+	unset add_pkg
 
 	# Create bootstrap archive.
 	create_bootstrap_archive "$package_arch"
