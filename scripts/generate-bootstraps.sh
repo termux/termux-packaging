@@ -5,8 +5,11 @@
 
 set -e
 
-: "${BASE_URL:="https://dl.bintray.com/termux/termux-packages-24"}"
-: "${TERMUX_PREFIX:="/data/data/com.termux/files/usr"}"
+# Can be changed by using '--repository' option.
+REPO_BASE_URL="https://dl.bintray.com/termux/termux-packages-24"
+
+# Can be changed by using '--prefix' option.
+TERMUX_PREFIX="/data/data/com.termux/files/usr"
 
 read_package_list() {
 	local architecture=$1
@@ -18,10 +21,10 @@ read_package_list() {
 		package_name=$(echo "$package" | grep Package: | awk '{ print $2 }')
 		PACKAGE_METADATA["$package_name"]=$package
 	done < <(
-				curl -Ls "${BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | \
+				curl -Ls "${REPO_BASE_URL}/dists/stable/main/binary-${architecture}/Packages" | \
 					sed -e "s/^$/\xFF/g"
 				echo
-				curl -Ls "${BASE_URL}/dists/stable/main/binary-all/Packages" | \
+				curl -Ls "${REPO_BASE_URL}/dists/stable/main/binary-all/Packages" | \
 					sed -e "s/^$/\xFF/g"
 			)
 }
@@ -32,7 +35,7 @@ pull_package() {
 	mkdir -p "$package_tmpdir"
 
 	local package_url
-	package_url="$BASE_URL/$(echo "${PACKAGE_METADATA[${package_name}]}" | grep Filename: | awk '{ print $2 }')"
+	package_url="$REPO_BASE_URL/$(echo "${PACKAGE_METADATA[${package_name}]}" | grep Filename: | awk '{ print $2 }')"
 
 	local package_dependencies
 	package_dependencies=$(
@@ -123,6 +126,63 @@ create_bootstrap_archive() {
 
 	mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${architecture}.zip" ./
 }
+
+show_usage() {
+	echo
+	echo "Usage: generate-bootstraps.sh [options]"
+	echo
+	echo "Generate bootstrap archives for Termux application."
+	echo
+	echo "Options:"
+	echo
+	echo " -h, --help              Show this help."
+	echo
+	echo " -p, --prefix PATH       Specify rootfs prefix absolute path."
+	echo "                         Should be exactly same as in packages"
+	echo "                         in the remote repository."
+	echo
+	echo " -r, --repository URL    Specify URL for APT repository from"
+	echo "                         which packages will be downloaded."
+	echo
+	echo "Repository URL: ${REPO_BASE_URL}"
+	echo "Prefix: ${TERMUX_PREFIX}"
+	echo
+}
+
+while (($# > 0)); do
+	case "$1" in
+		-h|--help)
+			show_usage
+			exit 0
+			;;
+		-p|--prefix)
+			if [ $# -gt 1 ] && [[ $2 != -* ]]; then
+				TERMUX_PREFIX="$2"
+				shift 1
+			else
+				echo "[!] Option '--repository' requires an argument."
+				show_usage
+				exit 1
+			fi
+			;;
+		-r|--repository)
+			if [ $# -gt 1 ] && [[ $2 != -* ]]; then
+				REPO_BASE_URL="$2"
+				shift 1
+			else
+				echo "[!] Option '--repository' requires an argument."
+				show_usage
+				exit 1
+			fi
+			;;
+		*)
+			echo "[!] Got unknown option '$1'"
+			show_usage
+			exit 1
+			;;
+	esac
+	shift 1
+done
 
 declare -A PACKAGE_METADATA
 
