@@ -14,7 +14,7 @@ read_package_list() {
 
 	echo "[*] Reading package list for '$architecture'..."
 
-	while read -d $'\xFF' package; do
+	while read -r -d $'\xFF' package; do
 		package_name=$(echo "$package" | grep Package: | awk '{ print $2 }')
 		PACKAGE_METADATA["$package_name"]=$package
 	done < <(
@@ -33,6 +33,24 @@ pull_package() {
 
 	local package_url
 	package_url="$BASE_URL/$(echo "${PACKAGE_METADATA[${package_name}]}" | grep Filename: | awk '{ print $2 }')"
+
+	local package_dependencies
+	package_dependencies=$(
+		while read -r -d ',' token; do
+			echo "$token" | cut -d'|' -f1 | sed -E 's@\(.*\)@@'
+		done <<< "$(echo "${PACKAGE_METADATA[${package_name}]}" | grep Depends: | sed -E 's@^Depends:@@')"
+	)
+
+	# Recursively handle dependencies.
+	if [ -n "$package_dependencies" ]; then
+		local dep
+		for dep in $package_dependencies; do
+			if [ ! -e "${BOOTSTRAP_TMPDIR}/${dep}" ]; then
+				pull_package $dep
+			fi
+		done
+		unset dep
+	fi
 
 	echo "[*] Downloading '$package_name'..."
 	curl --fail --location --output "$package_tmpdir/package.deb" "$package_url"
@@ -67,13 +85,15 @@ pull_package() {
 
 		# Generate checksums (md5).
 		tar xf "$data_archive"
-		find data -type f | xargs -r md5sum | sed 's@^\.$@@g' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.md5sums"
+		find data -type f -print0 | xargs -0 -r md5sum | sed 's@^\.$@@g' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.md5sums"
 
 		# Extract metadata.
 		tar xf "$control_archive"
-		cat control >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
-		echo "Status: install ok installed" >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
-		echo >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
+		{
+			cat control
+			echo "Status: install ok installed"
+			echo
+		} >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
 
 		# Additional data: conffiles & scripts
 		local file
@@ -92,14 +112,13 @@ create_bootstrap_archive() {
 
 	# Do not store symlinks in bootstrap archive.
 	# Instead, put all information to SYMLINKS.txt
-	(cd ${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}
-		for link in $(find . -type l); do
-			local dest=$(readlink "$link")
-			echo "${dest}←${link}" >> SYMLINKS.txt
-			rm -f $link
-		done
+	(cd "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}"
+		while read -r -d '' link; do
+			echo "$(readlink "$link")←${link}" >> SYMLINKS.txt
+			rm -f "$link"
+		done < <(find . -type l -print0)
 
-		zip -r9 "${BOOTSTRAP_TMPDIR}/bootstrap-${architecture}.zip" *
+		zip -r9 "${BOOTSTRAP_TMPDIR}/bootstrap-${architecture}.zip" ./*
 	)
 
 	mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${architecture}.zip" ./
@@ -126,35 +145,16 @@ for package_arch in aarch64 arm i686 x86_64; do
 	# Read metadata for all available packages.
 	read_package_list "$package_arch"
 
-	# Download and extract specified packages.
-	# TODO: automatically find and download dependencies instead of
-	# manually specifying them.
-	pull_package bash
-	pull_package readline
-	pull_package ncurses
-	pull_package command-not-found
-	pull_package termux-tools
-	pull_package dash
-	pull_package liblzma
-	pull_package libandroid-support
-	pull_package busybox
-	pull_package libc++
-	pull_package ca-certificates
-	pull_package openssl
-	pull_package libnghttp2
-	pull_package libcurl
-	pull_package gpgv
-	pull_package libgcrypt
-	pull_package libgpg-error
-	pull_package libbz2
-	pull_package termux-exec
-	pull_package termux-am
-	pull_package dpkg
+	# Download and extract specified packages and their dependencies.
 	pull_package apt
-	pull_package termux-keyring
 	pull_package game-repo
 	pull_package science-repo
-	pull_package zlib
+	pull_package bash
+	pull_package busybox
+	pull_package command-not-found
+	pull_package dash
+	pull_package termux-tools
+	pull_package termux-exec
 
 	# Create bootstrap archive.
 	create_bootstrap_archive "$package_arch"
