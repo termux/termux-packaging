@@ -14,6 +14,15 @@ REPO_BASE_URL="https://dl.bintray.com/termux/termux-packages-24"
 # Can be changed by using '--prefix' option.
 TERMUX_PREFIX="/data/data/com.termux/files/usr"
 
+# Check for some important utilities that may not be available for
+# some reason.
+for cmd in ar awk curl grep gzip find sed tar xargs xz zip; do
+	if [ -z "$(command -v $cmd)" ]; then
+		echo "[!] Utility '$cmd' is not available in PATH."
+		exit 1
+	fi
+done
+
 # Download package lists from remote repository.
 # Actually, there 2 lists are downloaded: one architecture-independent and one
 # for architecture specified as '$1' argument.
