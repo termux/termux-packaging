@@ -8,6 +8,11 @@ set -e
 BOOTSTRAP_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-tmp.XXXXXXXX")
 trap 'rm -rf $BOOTSTRAP_TMPDIR' EXIT
 
+# By default, bootstrap archives will be built for all architectures
+# supported by Termux application.
+# Override with option '--architectures'.
+TERMUX_ARCHITECTURES=("aarch64" "arm" "i686" "x86_64")
+
 # Can be changed by using '--repository' option.
 REPO_BASE_URL="https://dl.bintray.com/termux/termux-packages-24"
 
@@ -152,6 +157,7 @@ create_bootstrap_archive() {
 	)
 
 	mv -f "${BOOTSTRAP_TMPDIR}/bootstrap-${1}.zip" ./
+	echo "[*] Finished successfully (${1})."
 }
 
 show_usage() {
@@ -162,20 +168,27 @@ show_usage() {
 	echo
 	echo "Options:"
 	echo
-	echo " -h, --help              Show this help."
+	echo " -h, --help                  Show this help."
 	echo
-	echo " -a, --add PKG_LIST      Specify one or more additional packages"
-	echo "                         to include into bootstrap archive."
-	echo "                         Multiple packages should be passed as"
-	echo "                         comma-separated list."
+	echo " -a, --add PKG_LIST          Specify one or more additional packages"
+	echo "                             to include into bootstrap archive."
+	echo "                             Multiple packages should be passed as"
+	echo "                             comma-separated list."
 	echo
-	echo " -p, --prefix PATH       Specify rootfs prefix absolute path."
-	echo "                         Should be exactly same as in packages"
-	echo "                         in the remote repository."
+	echo " --architectures ARCH_LIST   Override default list of architectures"
+	echo "                             for which bootstrap archives will be"
+	echo "                             created."
+	echo "                             Multiple architectures should be passed"
+	echo "                             as comma-separated list."
 	echo
-	echo " -r, --repository URL    Specify URL for APT repository from"
-	echo "                         which packages will be downloaded."
+	echo " -p, --prefix PATH           Specify rootfs prefix absolute path."
+	echo "                             Should be exactly same as in packages"
+	echo "                             in the remote repository."
 	echo
+	echo " -r, --repository URL        Specify URL for APT repository from"
+	echo "                             which packages will be downloaded."
+	echo
+	echo "Architectures: ${TERMUX_ARCHITECTURES[*]}"
 	echo "Repository URL: ${REPO_BASE_URL}"
 	echo "Prefix: ${TERMUX_PREFIX}"
 	echo
@@ -196,6 +209,20 @@ while (($# > 0)); do
 				shift 1
 			else
 				echo "[!] Option '--add' requires an argument."
+				show_usage
+				exit 1
+			fi
+			;;
+		--architectures)
+			if [ $# -gt 1 ] && [ -n "$2" ] && [[ $2 != -* ]]; then
+				TERMUX_ARCHITECTURES=()
+				for arch in $(echo "$2" | tr ',' ' '); do
+					TERMUX_ARCHITECTURES+=("$arch")
+				done
+				unset arch
+				shift 1
+			else
+				echo "[!] Option '--architectures' requires an argument."
 				show_usage
 				exit 1
 			fi
@@ -229,7 +256,7 @@ while (($# > 0)); do
 	shift 1
 done
 
-for package_arch in aarch64 arm i686 x86_64; do
+for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	BOOTSTRAP_ROOTFS="$BOOTSTRAP_TMPDIR/rootfs-${package_arch}"
 	BOOTSTRAP_PKGDIR="$BOOTSTRAP_TMPDIR/packages-${package_arch}"
 
