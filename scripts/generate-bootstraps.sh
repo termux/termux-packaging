@@ -45,6 +45,7 @@ read_package_list() {
 				--location \
 				--output "${BOOTSTRAP_TMPDIR}/packages.${architecture}" \
 				"${REPO_BASE_URL}/dists/stable/main/binary-${architecture}/Packages"
+			echo >> "${BOOTSTRAP_TMPDIR}/packages.${architecture}"
 		fi
 
 		echo "[*] Reading package list for '${architecture}'..."
