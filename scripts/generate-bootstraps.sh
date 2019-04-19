@@ -88,56 +88,58 @@ pull_package() {
 		unset dep
 	fi
 
-	echo "[*] Downloading '$package_name'..."
-	curl --fail --location --output "$package_tmpdir/package.deb" "$package_url"
+	if [ ! -e "$package_tmpdir/package.deb" ]; then
+		echo "[*] Downloading '$package_name'..."
+		curl --fail --location --output "$package_tmpdir/package.deb" "$package_url"
 
-	echo "[*] Extracting '$package_name'..."
-	(cd "$package_tmpdir"
-		ar x package.deb
+		echo "[*] Extracting '$package_name'..."
+		(cd "$package_tmpdir"
+			ar x package.deb
 
-		# data.tar may have extension different from .xz
-		if [ -f "./data.tar.xz" ]; then
-			data_archive="data.tar.xz"
-		elif [ -f "./data.tar.gz" ]; then
-			data_archive="data.tar.gz"
-		else
-			echo "No data.tar.* found in '$package_name'."
-			exit 1
-		fi
-
-		# Do same for control.tar.
-		if [ -f "./control.tar.xz" ]; then
-			control_archive="control.tar.xz"
-		elif [ -f "./control.tar.gz" ]; then
-			control_archive="control.tar.gz"
-		else
-			echo "No control.tar.* found in '$package_name'."
-			exit 1
-		fi
-
-		# Extract files.
-		tar xf "$data_archive" -C "$BOOTSTRAP_ROOTFS"
-		tar tf "$data_archive" > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
-
-		# Generate checksums (md5).
-		tar xf "$data_archive"
-		find data -type f -print0 | xargs -0 -r md5sum | sed 's@^\.$@@g' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.md5sums"
-
-		# Extract metadata.
-		tar xf "$control_archive"
-		{
-			cat control
-			echo "Status: install ok installed"
-			echo
-		} >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
-
-		# Additional data: conffiles & scripts
-		for file in conffiles postinst postrm preinst prerm; do
-			if [ -f "${PWD}/${file}" ]; then
-				cp "$file" "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.${file}"
+			# data.tar may have extension different from .xz
+			if [ -f "./data.tar.xz" ]; then
+				data_archive="data.tar.xz"
+			elif [ -f "./data.tar.gz" ]; then
+				data_archive="data.tar.gz"
+			else
+				echo "No data.tar.* found in '$package_name'."
+				exit 1
 			fi
-		done
-	)
+
+			# Do same for control.tar.
+			if [ -f "./control.tar.xz" ]; then
+				control_archive="control.tar.xz"
+			elif [ -f "./control.tar.gz" ]; then
+				control_archive="control.tar.gz"
+			else
+				echo "No control.tar.* found in '$package_name'."
+				exit 1
+			fi
+
+			# Extract files.
+			tar xf "$data_archive" -C "$BOOTSTRAP_ROOTFS"
+			tar tf "$data_archive" > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
+
+			# Generate checksums (md5).
+			tar xf "$data_archive"
+			find data -type f -print0 | xargs -0 -r md5sum | sed 's@^\.$@@g' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.md5sums"
+
+			# Extract metadata.
+			tar xf "$control_archive"
+			{
+				cat control
+				echo "Status: install ok installed"
+				echo
+			} >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
+
+			# Additional data: conffiles & scripts
+			for file in conffiles postinst postrm preinst prerm; do
+				if [ -f "${PWD}/${file}" ]; then
+					cp "$file" "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.${file}"
+				fi
+			done
+		)
+	fi
 }
 
 # Final stage: generate bootstrap archive and place it to current
