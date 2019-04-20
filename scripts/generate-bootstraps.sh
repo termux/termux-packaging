@@ -56,6 +56,16 @@ read_package_list() {
 
 				if [ -z "${PACKAGE_METADATA["$package_name"]}" ]; then
 					PACKAGE_METADATA["$package_name"]="$package"
+				else
+					local prev_package_ver cur_package_ver
+					cur_package_ver=$(echo "$package" | grep -i "^Version:" | awk '{ print $2 }')
+					prev_package_ver=$(echo "${PACKAGE_METADATA["$package_name"]}" | grep -i "^Version:" | awk '{ print $2 }')
+
+					# If package has multiple versions, make sure that our metadata
+					# contains the latest one.
+					if [ "$(echo -e "${prev_package_ver}\n${cur_package_ver}" | sort -rV | head -n1)" = "${cur_package_ver}" ]; then
+						PACKAGE_METADATA["$package_name"]="$package"
+					fi
 				fi
 			fi
 		done < <(sed -e "s/^$/\xFF/g" "${BOOTSTRAP_TMPDIR}/packages.${architecture}")
