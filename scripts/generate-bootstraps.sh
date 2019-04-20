@@ -51,7 +51,12 @@ read_package_list() {
 		echo "[*] Reading package list for '${architecture}'..."
 		while read -r -d $'\xFF' package; do
 			if [ -n "$package" ]; then
-				PACKAGE_METADATA[$(echo "$package" | grep Package: | awk '{ print $2 }')]="$package"
+				local package_name
+				package_name=$(echo "$package" | grep -i "^Package:" | awk '{ print $2 }')
+
+				if [ -z "${PACKAGE_METADATA["$package_name"]}" ]; then
+					PACKAGE_METADATA["$package_name"]="$package"
+				fi
 			fi
 		done < <(sed -e "s/^$/\xFF/g" "${BOOTSTRAP_TMPDIR}/packages.${architecture}")
 	done
