@@ -26,12 +26,17 @@ enum ControlTarEntryType {
 }
 
 fn parse_control_ar_entry<R: std::io::Read, F: DebVisitor>(
+    xz_encoded: bool,
     ar_entry: ar::Entry<R>,
     visitor: &mut F,
 ) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
-    let reader = libflate::gzip::Decoder::new(ar_entry).expect("Error decompressing");
+    let reader: Box<Read> = if xz_encoded {
+        Box::new(lzma::reader::LzmaReader::new_decompressor(ar_entry).expect("Error decompressing"))
+    } else {
+        Box::new(libflate::gzip::Decoder::new(ar_entry).expect("Error decompressing"))
+    };
     let mut control_tar = tar::Archive::new(reader);
     for file in control_tar.entries().unwrap() {
         let mut file = file.unwrap();
@@ -89,18 +94,20 @@ where
         let mut entry = entry_result.unwrap();
         let mut control_tar = false;
         let mut data_tar = false;
+        let mut control_tar_xz = false;
 
         {
             let entry_name = std::str::from_utf8(entry.header().identifier()).unwrap();
-            if "control.tar.gz" == entry_name {
+            if "control.tar.gz" == entry_name || "control.tar.xz" == entry_name {
                 control_tar = true;
+                control_tar_xz = "control.tar.xz" == entry_name;
             } else if "data.tar.xz" == entry_name {
                 data_tar = true;
             }
         }
 
         if control_tar {
-            let control = parse_control_ar_entry(entry, visitor);
+            let control = parse_control_ar_entry(control_tar_xz, entry, visitor);
             visitor.visit_control(control);
         } else if data_tar {
             visit_data_tar_files(entry, visitor);
