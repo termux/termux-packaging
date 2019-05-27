@@ -91,7 +91,7 @@ where
 {
     let mut archive = ar::Archive::new(reader);
     while let Some(entry_result) = archive.next_entry() {
-        let mut entry = entry_result.unwrap();
+        let entry = entry_result.unwrap();
         let mut control_tar = false;
         let mut data_tar = false;
         let mut control_tar_xz = false;
