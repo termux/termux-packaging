@@ -69,7 +69,7 @@ pub fn check(path: &str) {
     let arches = ["arm", "aarch64", "i686", "x86_64", "all"];
     for arch in &arches {
         let mut visitor = CheckRepoVisitor::new();
-        let mut arch_path = path.join(format!("binary-{}", arch));
+        let arch_path = path.join(format!("binary-{}", arch));
 
         println!("Checking {:?}", arch_path);
 
