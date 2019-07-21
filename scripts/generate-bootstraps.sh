@@ -307,6 +307,7 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	pull_package coreutils
 	pull_package curl
 	pull_package dash
+	pull_package diffutils
 	pull_package findutils
 	pull_package gawk
 	pull_package grep
@@ -323,7 +324,6 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	# Additional.
 	pull_package busybox
 	pull_package ed
-	pull_package diffutils
 	pull_package dos2unix
 	pull_package net-tools
 	pull_package patch
