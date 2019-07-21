@@ -302,11 +302,34 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 
 	# Core utilities.
 	pull_package bash
-	pull_package busybox
+	pull_package bzip2
 	pull_package command-not-found
+	pull_package coreutils
+	pull_package curl
 	pull_package dash
-	pull_package termux-tools
+	pull_package findutils
+	pull_package gawk
+	pull_package grep
+	pull_package gzip
+	pull_package less
+	pull_package procps
+	pull_package psmisc
+	pull_package sed
+	pull_package tar
 	pull_package termux-exec
+	pull_package termux-tools
+	pull_package xz-utils
+
+	# Additional.
+	pull_package busybox
+	pull_package ed
+	pull_package diffutils
+	pull_package dos2unix
+	pull_package net-tools
+	pull_package patch
+	pull_package unzip
+	pull_package util-linux
+
 
 	# Handle additional packages.
 	for add_pkg in "${ADDITIONAL_PACKAGES[@]}"; do
