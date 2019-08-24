@@ -32,10 +32,7 @@ pub fn fetch_repo(arch: &str) -> HashMap<String, Package> {
     }
 }
 
-fn parse_packages<T>(reader: T) -> HashMap<String, Package>
-where
-    T: BufRead,
-{
+fn parse_packages(reader: impl BufRead) -> HashMap<String, Package> {
     let mut result: HashMap<String, Package> = HashMap::new();
     let mut current_package: HashMap<String, String> = HashMap::new();
     for line in reader.lines() {

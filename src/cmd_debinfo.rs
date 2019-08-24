@@ -16,10 +16,7 @@ pub fn print(file_path: &str) {
             }
         }
 
-        fn visit_file<T>(&mut self, _: &mut tar::Entry<T>)
-        where
-            T: Read,
-        {
+        fn visit_file(&mut self, _: &mut tar::Entry<impl Read>) {
             // Ignore
         }
     };

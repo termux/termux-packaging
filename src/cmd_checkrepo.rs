@@ -25,10 +25,7 @@ impl deb_file::DebVisitor for CheckRepoVisitor {
         self.current_package_name = fields["Package"].clone();
     }
 
-    fn visit_file<T>(&mut self, file: &mut tar::Entry<T>)
-    where
-        T: Read,
-    {
+    fn visit_file(&mut self, file: &mut tar::Entry<impl Read>) {
         let path = String::from(file.path().unwrap().to_str().unwrap());
         let path_copy = path.clone();
 

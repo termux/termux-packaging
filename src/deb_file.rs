@@ -8,15 +8,10 @@ use tar;
 
 pub trait DebVisitor {
     fn visit_control(&mut self, fields: HashMap<String, String>);
-    fn visit_conffiles<T>(&mut self, _file: &mut tar::Entry<T>)
-    where
-        T: Read,
-    {
-        // Do nothing.
+    fn visit_conffiles(&mut self, _file: &mut tar::Entry<impl Read>) {
+        // Default implementation does nothing.
     }
-    fn visit_file<T>(&mut self, file: &mut tar::Entry<T>)
-    where
-        T: Read;
+    fn visit_file(&mut self, file: &mut tar::Entry<impl Read>);
 }
 
 enum ControlTarEntryType {
@@ -25,14 +20,14 @@ enum ControlTarEntryType {
     Other,
 }
 
-fn parse_control_ar_entry<R: std::io::Read, F: DebVisitor>(
+fn parse_control_ar_entry(
     xz_encoded: bool,
-    ar_entry: ar::Entry<R>,
-    visitor: &mut F,
+    ar_entry: ar::Entry<impl std::io::Read>,
+    visitor: &mut impl DebVisitor,
 ) -> HashMap<String, String> {
     let mut map = HashMap::new();
 
-    let reader: Box<Read> = if xz_encoded {
+    let reader: Box<dyn Read> = if xz_encoded {
         Box::new(lzma::reader::LzmaReader::new_decompressor(ar_entry).expect("Error decompressing"))
     } else {
         Box::new(libflate::gzip::Decoder::new(ar_entry).expect("Error decompressing"))
@@ -71,11 +66,7 @@ fn parse_control_ar_entry<R: std::io::Read, F: DebVisitor>(
     map
 }
 
-fn visit_data_tar_files<R, F>(ar_entry: ar::Entry<R>, visitor: &mut F)
-where
-    R: std::io::Read,
-    F: DebVisitor,
-{
+fn visit_data_tar_files(ar_entry: ar::Entry<impl std::io::Read>, visitor: &mut impl DebVisitor) {
     let reader = lzma::reader::LzmaReader::new_decompressor(ar_entry).expect("Error decompressing");
     let mut control_tar = tar::Archive::new(reader);
     for file in control_tar.entries().unwrap() {
@@ -84,11 +75,7 @@ where
     }
 }
 
-pub fn visit_files<R, F>(reader: &mut R, visitor: &mut F)
-where
-    R: std::io::Read,
-    F: DebVisitor,
-{
+pub fn visit_files(reader: &mut impl std::io::Read, visitor: &mut impl DebVisitor) {
     let mut archive = ar::Archive::new(reader);
     while let Some(entry_result) = archive.next_entry() {
         let entry = entry_result.unwrap();
@@ -96,14 +83,12 @@ where
         let mut data_tar = false;
         let mut control_tar_xz = false;
 
-        {
-            let entry_name = std::str::from_utf8(entry.header().identifier()).unwrap();
-            if "control.tar.gz" == entry_name || "control.tar.xz" == entry_name {
-                control_tar = true;
-                control_tar_xz = "control.tar.xz" == entry_name;
-            } else if "data.tar.xz" == entry_name {
-                data_tar = true;
-            }
+        let entry_name = std::str::from_utf8(entry.header().identifier()).unwrap();
+        if "control.tar.gz" == entry_name || "control.tar.xz" == entry_name {
+            control_tar = true;
+            control_tar_xz = "control.tar.xz" == entry_name;
+        } else if "data.tar.xz" == entry_name {
+            data_tar = true;
         }
 
         if control_tar {

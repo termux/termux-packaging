@@ -40,10 +40,7 @@ impl deb_file::DebVisitor for CommandsNotFoundVisitor {
         self.current_package = fields["Package"].clone();
     }
 
-    fn visit_file<R>(&mut self, file: &mut tar::Entry<R>)
-    where
-        R: Read,
-    {
+    fn visit_file(&mut self, file: &mut tar::Entry<impl Read>) {
         let header = file.header();
         if header.entry_type() != tar::EntryType::Regular
             && header.entry_type() != tar::EntryType::Symlink

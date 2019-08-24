@@ -34,7 +34,7 @@ pub struct CreateBootstrapVisitor {
     file_entries: HashSet<String>,
 }
 
-fn write_zip_file(zip_writer: &mut ZipWriter<File>, file_name: &str, file_contents: &mut Read) {
+fn write_zip_file(zip_writer: &mut ZipWriter<File>, file_name: &str, file_contents: &mut dyn Read) {
     zip_writer
         .start_file(file_name, FileOptions::default())
         .unwrap_or_else(|err| panic!("Error starting {} zip entry: {}", file_name, err));
@@ -61,17 +61,11 @@ impl DebVisitor for CreateBootstrapVisitor {
             .expect("Error writing to dpkg/status")
     }
 
-    fn visit_conffiles<T>(&mut self, file: &mut tar::Entry<T>)
-    where
-        T: Read,
-    {
+    fn visit_conffiles(&mut self, file: &mut tar::Entry<impl Read>) {
         copy(file, &mut self.conffiles).expect("Error copying conffiles");
     }
 
-    fn visit_file<T>(&mut self, file: &mut tar::Entry<T>)
-    where
-        T: Read,
-    {
+    fn visit_file(&mut self, file: &mut tar::Entry<impl Read>) {
         let file_path_full: String;
         {
             let header = file.header();
