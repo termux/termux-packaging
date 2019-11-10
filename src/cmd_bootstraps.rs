@@ -34,7 +34,11 @@ pub struct CreateBootstrapVisitor {
     file_entries: HashSet<String>,
 }
 
-fn write_zip_file(zip_writer: &mut ZipWriter<File>, file_name: &str, file_contents: &mut dyn Read) {
+fn write_zip_file(
+    zip_writer: &mut ZipWriter<File>,
+    file_name: &str,
+    file_contents: &mut impl Read,
+) {
     zip_writer
         .start_file(file_name, FileOptions::default())
         .unwrap_or_else(|err| panic!("Error starting {} zip entry: {}", file_name, err));

@@ -18,30 +18,30 @@ mod cmd_notfound;
 mod deb_file;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "termux-packaging", author = "")]
-#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
+#[structopt(name = "termux-packaging")]
+#[structopt(setting(structopt::clap::AppSettings::ColoredHelp))]
 /// Termux packaging tools.
 enum Opt {
-    #[structopt(name = "bootstraps", author = "")]
+    #[structopt(name = "bootstraps")]
     /// Create bootstrap zips using packages from termux.net
     Bootstraps {
         /// Output directory to create the zip files in
         directory: String,
     },
-    #[structopt(name = "checkrepo", author = "")]
+    #[structopt(name = "checkrepo")]
     /// Check a local repository for problems
     CheckRepo {
         /// Path to directory containing binary-* files
         directory: String,
     },
-    #[structopt(name = "debinfo", author = "")]
+    #[structopt(name = "debinfo")]
     /// Show information about a deb file
     DebInfo {
         /// The .deb file to inspect
         #[structopt(name = "DEBFILE")]
         file: String,
     },
-    #[structopt(name = "notfound", author = "")]
+    #[structopt(name = "notfound")]
     /// Update the command-not-found headers
     NotFound {
         /// A directory containing packages to scan for binaries
