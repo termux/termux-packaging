@@ -1,4 +1,4 @@
-use deb_file;
+use crate::deb_file;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;

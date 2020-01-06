@@ -2,6 +2,7 @@
 name = "termux-packaging"
 version = "0.1.0"
 authors = ["Fredrik Fornwall <fredrik@fornwall.net>"]
+edition = "2018"
 
 [dependencies]
 ar = "*"

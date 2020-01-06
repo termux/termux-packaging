@@ -1,4 +1,4 @@
-use deb_file;
+use crate::deb_file;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::Read;

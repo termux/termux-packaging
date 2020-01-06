@@ -1,4 +1,4 @@
-use deb_file;
+use crate::deb_file;
 use std::collections::HashMap;
 use std::fs::{metadata, File, OpenOptions};
 use std::io::{Read, Write};
@@ -16,16 +16,17 @@ pub struct CommandsNotFoundVisitor {
 
 impl CommandsNotFoundVisitor {
     fn write_arch_line(&mut self, line: &str) {
-        let writer = |arch_name: &String, arch_files: &mut HashMap<String, File>| {
+        let writer = |arch_name: &str, arch_files: &mut HashMap<String, File>| {
             let file = arch_files.get_mut(&arch_name.to_string()).unwrap();
             if let Err(e) = file.write(line.as_bytes()) {
                 eprintln!("Unable to write to file: {}", e);
                 exit(1);
             }
         };
+
         if self.current_arch == "all" {
             for arch in &["arm", "aarch64", "i686", "x86_64"] {
-                writer(&arch.to_string(), &mut self.arch_files);
+                writer(arch, &mut self.arch_files);
             }
         } else {
             writer(&self.current_arch, &mut self.arch_files);

@@ -1,5 +1,5 @@
-use apt_repo::fetch_repo;
-use deb_file::{visit_files, DebVisitor};
+use crate::apt_repo::fetch_repo;
+use crate::deb_file::{visit_files, DebVisitor};
 use md5;
 use reqwest;
 use std::collections::{HashMap, HashSet};
