@@ -21,7 +21,7 @@ pub fn fetch_repo(arch: &str) -> HashMap<String, Package> {
         arch
     );
 
-    match reqwest::get(&url) {
+    match reqwest::blocking::get(&url) {
         Ok(response) => {
             let reader = BufReader::new(response);
             parse_packages(reader)

@@ -8,7 +8,7 @@ edition = "2018"
 ar = "*"
 libflate = "*"
 md5 = "*"
-reqwest = "*"
+reqwest = { version = "*", features = ["blocking"] }
 rust-lzma = "*"
 structopt = "*"
 tar = "*"

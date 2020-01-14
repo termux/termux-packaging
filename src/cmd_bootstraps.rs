@@ -172,7 +172,7 @@ pub fn create(output: &str) {
         let my_arch_all_packages = Arc::clone(&arch_all_packages);
         let my_path = path.clone();
         join_handles.push(thread::spawn(move || {
-            let http_client = reqwest::Client::new();
+            let http_client = reqwest::blocking::Client::new();
 
             let output_zip_path = my_path.join(format!("bootstrap-{}.zip", arch));
             let output_zip_file = OpenOptions::new()
