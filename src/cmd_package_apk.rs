@@ -3,7 +3,7 @@ use crate::deb_file::{visit_files, DebVisitor};
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{copy, Error, ErrorKind, Read, Write};
+use std::io::{copy, ErrorKind, Read, Write};
 use std::sync::{Arc, RwLock};
 use std::thread;
 
@@ -57,38 +57,29 @@ impl DebVisitor for CreateApkVisitor {
     }
 }
 
-fn write_bytes_to_file(path: &str, file_content: &[u8]) -> Result<(), Error> {
-    let mut output = File::create(path)?;
-    output.write_all(file_content)?;
-    Ok(())
+fn write_bytes_to_file(path: &str, file_content: &[u8]) {
+    let mut output = File::create(path).unwrap();
+    output.write_all(file_content).unwrap();
 }
 
-fn write_string_to_file(path: &str, file_content: &str) -> Result<(), Error> {
-    let mut output = File::create(path)?;
-    write!(output, "{}", file_content)?;
-    Ok(())
+fn write_string_to_file(path: &str, file_content: &str) {
+    write_bytes_to_file(path, file_content.as_bytes());
 }
 
 fn create_dir(path: &str) {
-    match std::fs::create_dir(path) {
+    match std::fs::create_dir_all(path) {
         Ok(()) => {}
-        Err(error) => {
-            if error.kind() == ErrorKind::AlreadyExists {
-                eprintln!("Output directory already exists: {}", path);
-                std::process::exit(1);
-            } else {
-                panic!("{}", error.to_string());
-            }
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => {
+            eprintln!("Output directory already exists: {}", path);
+            std::process::exit(1);
         }
+        Err(error) => panic!("{}", error.to_string()),
     }
 }
 
 pub fn create_apk(package_name: &str, output_dir: &str) {
     create_dir(output_dir);
-    create_dir(&format!("{}/app", output_dir));
-    create_dir(&format!("{}/app/src", output_dir));
     create_dir(&format!("{}/app/src/main", output_dir));
-    create_dir(&format!("{}/app/src/main/jniLibs", output_dir));
 
     let android_manifest = include_str!("AndroidManifest.xml");
     let android_manifest = android_manifest.replace("PACKAGE_NAME", package_name);
@@ -96,24 +87,20 @@ pub fn create_apk(package_name: &str, output_dir: &str) {
     write_string_to_file(
         &format!("{}/build.gradle", output_dir),
         include_str!("build.gradle"),
-    )
-    .unwrap();
-    write_string_to_file(&format!("{}/settings.gradle", output_dir), "include ':app'").unwrap();
+    );
+    write_string_to_file(&format!("{}/settings.gradle", output_dir), "include ':app'");
     write_bytes_to_file(
         &format!("{}/app/dev_keystore.jks", output_dir),
         include_bytes!("dev_keystore.jks"),
-    )
-    .unwrap();
+    );
     write_string_to_file(
         &format!("{}/app/build.gradle", output_dir),
         &include_str!("app-build.gradle").replace("PACKAGE_NAME", package_name),
-    )
-    .unwrap();
+    );
     write_string_to_file(
         &format!("{}/app/src/main/AndroidManifest.xml", output_dir),
         &android_manifest,
-    )
-    .unwrap();
+    );
 
     let arch_all_packages = fetch_repo("all");
     let arch_all_packages = Arc::new(RwLock::new(arch_all_packages));
@@ -169,16 +156,14 @@ pub fn create_apk(package_name: &str, output_dir: &str) {
                     output_dir, android_abi_name
                 ),
                 &visitor.file_mapping,
-            )
-            .unwrap();
+            );
             write_string_to_file(
                 &format!(
                     "{}/app/src/main/jniLibs/{}/symlinks.so",
                     output_dir, android_abi_name
                 ),
                 &visitor.symlinks,
-            )
-            .unwrap();
+            );
         }));
     }
     for handle in join_handles {

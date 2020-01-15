@@ -26,9 +26,7 @@ pub fn fetch_repo(arch: &str) -> HashMap<String, Package> {
             let reader = BufReader::new(response);
             parse_packages(reader)
         }
-        Err(error) => {
-            panic!("Error fetching {}: {:?}", url, error);
-        }
+        Err(error) => panic!("Error fetching {}: {:?}", url, error),
     }
 }
 
