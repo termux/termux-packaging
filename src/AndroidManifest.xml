@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="net.termux.PACKAGE_NAME"
+          android:installLocation="internalOnly"
+          android:sharedUserId="com.termux">
+
+    <application
+            android:allowBackup="false"
+            android:label="TermuxPackage:PACKAGE_NAME"/>
+</manifest>

@@ -15,6 +15,7 @@ mod cmd_bootstraps;
 mod cmd_checkrepo;
 mod cmd_debinfo;
 mod cmd_notfound;
+mod cmd_package_apk;
 mod deb_file;
 
 #[derive(StructOpt, Debug)]
@@ -49,6 +50,14 @@ enum Opt {
         /// The directory where the commands-$ARCH.h files will be created
         output: String,
     },
+    #[structopt(name = "package-apk")]
+    /// Update the command-not-found headers
+    PackageApk {
+        /// The package name
+        package: String,
+        /// The directory where the generated project will be created
+        output: String,
+    },
 }
 
 fn main() {
@@ -57,5 +66,6 @@ fn main() {
         Opt::CheckRepo { directory } => cmd_checkrepo::check(&directory),
         Opt::DebInfo { file } => cmd_debinfo::print(&file),
         Opt::NotFound { repo, output } => cmd_notfound::update(repo, &output),
+        Opt::PackageApk { package, output } => cmd_package_apk::create_apk(&package, &output),
     }
 }
