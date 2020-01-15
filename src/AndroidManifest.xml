@@ -5,5 +5,6 @@
 
     <application
             android:allowBackup="false"
+            android:hasCode="false"
             android:label="TermuxPackage:PACKAGE_NAME"/>
 </manifest>
