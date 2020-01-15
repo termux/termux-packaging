@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::{copy, ErrorKind, Read, Write};
 use std::sync::{Arc, RwLock};
 use std::thread;
+use std::os::unix::fs::PermissionsExt;
 
 pub struct CreateApkVisitor {
     output_directory: String,
@@ -77,16 +78,34 @@ fn create_dir(path: &str) {
     }
 }
 
-pub fn create_apk(package_name: &str, output_dir: &str) {
+pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
     create_dir(output_dir);
     create_dir(&format!("{}/app/src/main", output_dir));
+    create_dir(&format!("{}/gradle/wrapper", output_dir));
 
     let android_manifest = include_str!("AndroidManifest.xml");
     let android_manifest = android_manifest.replace("PACKAGE_NAME", package_name);
 
-    write_string_to_file(
+    write_bytes_to_file(
         &format!("{}/build.gradle", output_dir),
-        include_str!("build.gradle"),
+        include_bytes!("build.gradle"),
+    );
+    let gradlew_path = format!("{}/gradlew", output_dir);
+    write_bytes_to_file(
+        &gradlew_path,
+        include_bytes!("gradlew"),
+    );
+    let mut perms = std::fs::metadata(&gradlew_path).unwrap().permissions();
+    perms.set_mode(0o700);
+    std::fs::set_permissions(gradlew_path, perms).unwrap();
+
+    write_bytes_to_file(
+        &format!("{}/gradle/wrapper/gradle-wrapper.jar", output_dir),
+        include_bytes!("gradle-wrapper.jar"),
+    );
+    write_bytes_to_file(
+        &format!("{}/gradle/wrapper/gradle-wrapper.properties", output_dir),
+        include_bytes!("gradle-wrapper.properties"),
     );
     write_string_to_file(&format!("{}/settings.gradle", output_dir), "include ':app'");
     write_bytes_to_file(
@@ -168,5 +187,15 @@ pub fn create_apk(package_name: &str, output_dir: &str) {
     }
     for handle in join_handles {
         handle.join().unwrap();
+    }
+
+    if install {
+        let path_to_program = std::fs::canonicalize(format!("{}/gradlew", output_dir)).unwrap();
+        println!("Executing {:?}", path_to_program);
+        std::process::Command::new(path_to_program)
+            .args(&["installDebug"])
+            .current_dir(output_dir)
+            .spawn()
+            .expect("failed to execute process");
     }
 }

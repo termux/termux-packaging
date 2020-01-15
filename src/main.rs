@@ -53,6 +53,9 @@ enum Opt {
     #[structopt(name = "package-apk")]
     /// Update the command-not-found headers
     PackageApk {
+        /// If gradle installDebug should be executed immediately
+        #[structopt(short, long)]
+        install: bool,
         /// The package name
         package: String,
         /// The directory where the generated project will be created
@@ -66,6 +69,7 @@ fn main() {
         Opt::CheckRepo { directory } => cmd_checkrepo::check(&directory),
         Opt::DebInfo { file } => cmd_debinfo::print(&file),
         Opt::NotFound { repo, output } => cmd_notfound::update(repo, &output),
-        Opt::PackageApk { package, output } => cmd_package_apk::create_apk(&package, &output),
+        Opt::PackageApk { install, package, output } => cmd_package_apk::create_apk(&package, &output, install),
+
     }
 }
