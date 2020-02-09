@@ -134,7 +134,7 @@ pull_package() {
 
 			# Extract files.
 			tar xf "$data_archive" -C "$BOOTSTRAP_ROOTFS"
-			tar tf "$data_archive" | sed 's@^\./@/@' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
+			tar tf "$data_archive" | sed -e 's@^\./@/@' -e 's@^/$@/.@' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
 
 			# Generate checksums (md5).
 			tar xf "$data_archive"
