@@ -1,7 +1,7 @@
 IMAGE=termux/packaging
 
 linux-static-executable:
-	docker run --rm -v "$(PWD)":/build fredrikfornwall/rust-static-builder
+	docker run --rm -v "$(PWD)":/build fredrikfornwall/rust-static-builder:1.41.0
 
 docker-image: linux-static-executable
 	docker build -t $(IMAGE) .
