@@ -4,9 +4,9 @@ use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{copy, ErrorKind, Read, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::sync::{Arc, RwLock};
 use std::thread;
-use std::os::unix::fs::PermissionsExt;
 
 pub struct CreateApkVisitor {
     output_directory: String,
@@ -91,10 +91,7 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
         include_bytes!("build.gradle"),
     );
     let gradlew_path = format!("{}/gradlew", output_dir);
-    write_bytes_to_file(
-        &gradlew_path,
-        include_bytes!("gradlew"),
-    );
+    write_bytes_to_file(&gradlew_path, include_bytes!("gradlew"));
     let mut perms = std::fs::metadata(&gradlew_path).unwrap().permissions();
     perms.set_mode(0o700);
     std::fs::set_permissions(gradlew_path, perms).unwrap();

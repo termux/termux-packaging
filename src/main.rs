@@ -69,7 +69,10 @@ fn main() {
         Opt::CheckRepo { directory } => cmd_checkrepo::check(&directory),
         Opt::DebInfo { file } => cmd_debinfo::print(&file),
         Opt::NotFound { repo, output } => cmd_notfound::update(repo, &output),
-        Opt::PackageApk { install, package, output } => cmd_package_apk::create_apk(&package, &output, install),
-
+        Opt::PackageApk {
+            install,
+            package,
+            output,
+        } => cmd_package_apk::create_apk(&package, &output, install),
     }
 }
