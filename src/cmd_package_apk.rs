@@ -84,7 +84,9 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
     create_dir(&format!("{}/gradle/wrapper", output_dir));
 
     let android_manifest = include_str!("AndroidManifest.xml");
-    let android_manifest = android_manifest.replace("PACKAGE_NAME", package_name);
+    // Android package names cannot have dashes in them:
+    let android_package_name = &package_name.replace("-", "");
+    let android_manifest = android_manifest.replace("PACKAGE_NAME", android_package_name);
 
     write_bytes_to_file(
         &format!("{}/build.gradle", output_dir),
@@ -111,7 +113,7 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
     );
     write_string_to_file(
         &format!("{}/app/build.gradle", output_dir),
-        &include_str!("app-build.gradle").replace("PACKAGE_NAME", package_name),
+        &include_str!("app-build.gradle").replace("PACKAGE_NAME", android_package_name),
     );
     write_string_to_file(
         &format!("{}/app/src/main/AndroidManifest.xml", output_dir),
@@ -160,7 +162,7 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
                     "{}/app/src/main/jniLibs/{}",
                     output_dir, android_abi_name
                 ),
-                counter: 0,
+                counter: 100,
                 file_mapping: String::new(),
                 symlinks: String::new(),
             };
