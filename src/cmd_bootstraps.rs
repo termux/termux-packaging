@@ -2,11 +2,11 @@ use crate::apt_repo::fetch_repo;
 use crate::deb_file::{visit_files, DebVisitor};
 use md5;
 use reqwest;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{copy, Read, Result, Write};
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::thread;
 use std::vec::Vec;
 use tar;
@@ -27,11 +27,8 @@ impl<'a, R: Read, W: Write> Read for TeeReader<'a, R, W> {
 
 pub struct CreateBootstrapVisitor {
     zip_writer: ZipWriter<File>,
-    dpkg_status: Vec<u8>,
     conffiles: Vec<u8>,
     symlinks_txt: Vec<u8>,
-    package_digests: Vec<u8>,
-    file_entries: HashSet<String>,
 }
 
 fn write_zip_file(
@@ -47,30 +44,13 @@ fn write_zip_file(
 }
 
 impl DebVisitor for CreateBootstrapVisitor {
-    fn visit_control(&mut self, fields: HashMap<String, String>) {
-        for (key, value) in &fields {
-            match key.as_str() {
-                "Filename" | "MD5Sum" | "SHA1" | "SHA256" | "Size" => {
-                    continue;
-                }
-                _ => {
-                    self.dpkg_status
-                        .write_all(format!("{}: {}\n", key, value).as_bytes())
-                        .expect("Error writing to dpkg/status");
-                }
-            }
-        }
-        self.dpkg_status
-            .write_all(b"Status: install ok installed\n\n")
-            .expect("Error writing to dpkg/status")
-    }
+    fn visit_control(&mut self, _fields: HashMap<String, String>) {}
 
     fn visit_conffiles(&mut self, file: &mut tar::Entry<impl Read>) {
         copy(file, &mut self.conffiles).expect("Error copying conffiles");
     }
 
     fn visit_file(&mut self, file: &mut tar::Entry<impl Read>) {
-        let file_path_full: String;
         {
             let header = file.header();
             let is_symlink = header.entry_type() == tar::EntryType::Symlink;
@@ -82,7 +62,6 @@ impl DebVisitor for CreateBootstrapVisitor {
             let pp = file.path().unwrap();
             let file_path = pp.to_str().unwrap();
             let relative_path = &file_path[33..];
-            file_path_full = String::from(&file_path[2..]);
 
             if is_symlink {
                 self.symlinks_txt
@@ -111,70 +90,53 @@ impl DebVisitor for CreateBootstrapVisitor {
             };
             copy(&mut tee, &mut self.zip_writer).expect("Error copying from tar to zip");
         }
-
-        self.file_entries.insert(file_path_full.clone());
-
-        let digest = md5_context.compute();
-        self.package_digests
-            .write_all(format!("{:x}  {}\n", digest, file_path_full).as_bytes())
-            .expect("Error writing to package digest");
     }
 }
 
-pub fn create(output: &str) {
+pub fn create(output: &str, version: u16) {
     let path = PathBuf::from(output);
 
-    let bootstrap_packages = [
-        // Having bash as shell:
+    let bootstrap_packages = Arc::new(vec![
         "bash",
-        "readline",
-        "ncurses",
-        "command-not-found",
-        "termux-tools",
-        // Needed for bin/sh:
-        "dash",
-        // For use by dpkg and apt:
-        "liblzma",
-        // Needed by dpkg:
-        "libandroid-support",
-        // dpkg uses tar (and wants 'find' in path for some operations):
         "busybox",
-        // apt uses STL:
-        "libc++",
-        // apt now includes apt-transport-https:
         "ca-certificates",
-        "openssl",
-        "libnghttp2",
-        "libcurl",
-        // gnupg for package verification:
-        "gpgv",
-        "libgcrypt",
-        "libgpg-error",
+        "coreutils",
+        "curl",
+        "dash",
+        "grep",
+        "less",
+        "libandroid-support",
         "libbz2",
-        // termux-exec fixes shebangs (and apt depends on it):
-        "termux-exec",
-        // Everyone needs a working "am" (and termux-tools depends on it):
+        "libcurl",
+        "libgmp",
+        "libiconv",
+        "liblzma",
+        "libnghttp2",
+        "libtalloc",
+        "ncurses",
+        "openssl",
+        "proot",
+        "readline",
+        "sed",
         "termux-am",
-        // For package management:
-        "dpkg",
-        "apt",
-        "termux-keyring",
-        "game-repo",
-        "science-repo",
-    ];
+        "termux-exec",
+        "termux-tools",
+        "zlib",
+    ]);
 
-    let arch_all_packages = fetch_repo("all");
-    let arch_all_packages = Arc::new(RwLock::new(arch_all_packages));
+    let arch_all_packages = Arc::new(fetch_repo("all"));
 
     let mut join_handles = Vec::new();
 
     for arch in &["arm", "aarch64", "i686", "x86_64"] {
-        let my_arch_all_packages = Arc::clone(&arch_all_packages);
         let my_path = path.clone();
+        let my_arch_all_packages = Arc::clone(&arch_all_packages);
+        let my_bootstrap_packages = Arc::clone(&bootstrap_packages);
         join_handles.push(thread::spawn(move || {
             let http_client = reqwest::blocking::Client::new();
 
-            let output_zip_path = my_path.join(format!("bootstrap-{}.zip", arch));
+            let output_zip_path =
+                my_path.join(format!("android10-v{}-bootstrap-{}.zip", version, arch));
             let output_zip_file = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -184,26 +146,12 @@ pub fn create(output: &str) {
 
             let mut visitor = CreateBootstrapVisitor {
                 zip_writer: ZipWriter::new(output_zip_file),
-                dpkg_status: Vec::new(),
                 conffiles: Vec::new(),
                 symlinks_txt: Vec::new(),
-                package_digests: Vec::new(),
-                // All files, directories and symlinks added, for "var/lib/dpkg/info/$PKG.list".
-                file_entries: HashSet::new(),
             };
 
             // The app needs directories to appear before files.
-            for dir in vec![
-                "etc/apt/preferences.d/",
-                "etc/apt/apt.conf.d/",
-                "var/cache/apt/archives/partial/",
-                "var/log/apt/",
-                "tmp/",
-                "var/lib/dpkg/triggers/",
-                "var/lib/dpkg/updates/",
-            ]
-            .iter()
-            {
+            for dir in vec!["tmp/"].iter() {
                 visitor
                     .zip_writer
                     .add_directory(*dir, FileOptions::default())
@@ -217,11 +165,10 @@ pub fn create(output: &str) {
                 .expect("Unable to create var/lib/dpkg/available");
 
             let packages = fetch_repo(arch);
-            for bootstrap_package_name in &bootstrap_packages {
-                let arch_all = my_arch_all_packages.read().unwrap();
+            for bootstrap_package_name in my_bootstrap_packages.iter() {
                 let bootstrap_package = packages
                     .get(*bootstrap_package_name)
-                    .or_else(|| arch_all.get(*bootstrap_package_name))
+                    .or_else(|| my_arch_all_packages.get(*bootstrap_package_name))
                     .unwrap_or_else(|| panic!("Cannot find package '{}'", bootstrap_package_name));
 
                 let package_url = bootstrap_package.package_url();
@@ -231,46 +178,10 @@ pub fn create(output: &str) {
                     .send()
                     .unwrap_or_else(|_| panic!("Failed fetching {}", package_url));
 
-                visitor.package_digests.clear();
-                visitor.file_entries.clear();
                 visitor.conffiles.clear();
                 visit_files(&mut response, &mut visitor);
 
                 {
-                    let mut added_paths: HashSet<&str> = HashSet::new();
-                    let mut list_buffer: Vec<u8> = Vec::new();
-                    for path in &visitor.file_entries {
-                        if added_paths.insert(path) {
-                            list_buffer
-                                .write_all(&format!("/{}\n", path).as_bytes())
-                                .expect("Error writing to list buffer");
-                        }
-                    }
-
-                    // dpkg wants folders to be present as well:
-                    for path in &visitor.file_entries {
-                        let mut slash_search = path.find('/');
-                        while let Some(index) = slash_search {
-                            let sub_string = &path[0..index];
-                            if added_paths.insert(sub_string) {
-                                list_buffer
-                                    .write_all(&format!("/{}\n", sub_string).as_bytes())
-                                    .expect("Error writing to list buffer");
-                            }
-                            slash_search = path[(index + 1)..].find('/');
-                            if let Some(new_index) = slash_search {
-                                slash_search = Some(new_index + index + 1);
-                            }
-                        }
-                    }
-
-                    let list_path = format!("var/lib/dpkg/info/{}.list", bootstrap_package_name);
-                    write_zip_file(
-                        &mut visitor.zip_writer,
-                        list_path.as_str(),
-                        &mut &list_buffer[..],
-                    );
-
                     if !visitor.conffiles.is_empty() {
                         let conffiles_path =
                             format!("var/lib/dpkg/info/{}.conffiles", bootstrap_package_name);
@@ -281,21 +192,8 @@ pub fn create(output: &str) {
                         );
                     }
                 }
-
-                let digests_file_path =
-                    format!("var/lib/dpkg/info/{}.md5sums", bootstrap_package_name);
-                write_zip_file(
-                    &mut visitor.zip_writer,
-                    digests_file_path.as_str(),
-                    &mut &visitor.package_digests[..],
-                );
             }
 
-            write_zip_file(
-                &mut visitor.zip_writer,
-                "var/lib/dpkg/status",
-                &mut &visitor.dpkg_status[..],
-            );
             write_zip_file(
                 &mut visitor.zip_writer,
                 "SYMLINKS.txt",

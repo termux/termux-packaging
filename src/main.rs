@@ -24,8 +24,10 @@ mod deb_file;
 /// Termux packaging tools.
 enum Opt {
     #[structopt(name = "bootstraps")]
-    /// Create bootstrap zips using packages from termux.net
+    /// Create Android 10 bootstrap zips using packages from bintray
     Bootstraps {
+        /// Version number to use in generated zip files
+        version: u16,
         /// Output directory to create the zip files in
         directory: String,
     },
@@ -51,7 +53,7 @@ enum Opt {
         output: String,
     },
     #[structopt(name = "package-apk")]
-    /// Update the command-not-found headers
+    /// Create Android 10 package APK file
     PackageApk {
         /// If gradle installDebug should be executed immediately
         #[structopt(short, long)]
@@ -65,7 +67,7 @@ enum Opt {
 
 fn main() {
     match Opt::from_args() {
-        Opt::Bootstraps { directory } => cmd_bootstraps::create(&directory),
+        Opt::Bootstraps { directory, version } => cmd_bootstraps::create(&directory, version),
         Opt::CheckRepo { directory } => cmd_checkrepo::check(&directory),
         Opt::DebInfo { file } => cmd_debinfo::print(&file),
         Opt::NotFound { repo, output } => cmd_notfound::update(repo, &output),

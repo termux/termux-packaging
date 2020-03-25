@@ -2,7 +2,7 @@ use crate::apt_repo::fetch_repo;
 use crate::deb_file::{visit_files, DebVisitor};
 use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{rename, File};
 use std::io::{copy, ErrorKind, Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::sync::{Arc, RwLock};
@@ -188,13 +188,28 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
         handle.join().unwrap();
     }
 
+    let path_to_gradlew = std::fs::canonicalize(format!("{}/gradlew", output_dir)).unwrap();
     if install {
-        let path_to_program = std::fs::canonicalize(format!("{}/gradlew", output_dir)).unwrap();
-        println!("Executing {:?}", path_to_program);
-        std::process::Command::new(path_to_program)
+        println!("Executing {:?}", path_to_gradlew);
+        std::process::Command::new(path_to_gradlew)
             .args(&["installDebug"])
             .current_dir(output_dir)
             .spawn()
             .expect("failed to execute process");
+    } else {
+        println!("Executing {:?}", path_to_gradlew);
+        std::process::Command::new(path_to_gradlew)
+            .args(&["assembleDebug"])
+            .current_dir(output_dir)
+            .spawn()
+            .expect("failed to execute process")
+            .wait()
+            .expect("failed to wait on child");
+        rename(
+            format!("{}/app/build/outputs/apk/debug/app-debug.apk", output_dir),
+            format!("{}.apk", output_dir),
+        )
+        .expect("failed renaming apk file");
+        println!("Created {}.apk", output_dir);
     }
 }
