@@ -319,6 +319,7 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	pull_package tar
 	pull_package termux-exec
 	pull_package termux-tools
+	pull_package util-linux
 	pull_package xz-utils
 
 	# Additional.
@@ -329,7 +330,6 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	pull_package net-tools
 	pull_package patch
 	pull_package unzip
-	pull_package util-linux
 
 
 	# Handle additional packages.
