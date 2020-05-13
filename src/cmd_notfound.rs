@@ -4,7 +4,6 @@ use std::fs::{metadata, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
-use tar;
 use walkdir::WalkDir;
 
 pub struct CommandsNotFoundVisitor {

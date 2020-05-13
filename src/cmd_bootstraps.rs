@@ -1,7 +1,5 @@
 use crate::apt_repo::fetch_repo;
 use crate::deb_file::{visit_files, DebVisitor};
-use md5;
-use reqwest;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{copy, Read, Result, Write};
@@ -9,7 +7,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
 use std::vec::Vec;
-use tar;
 use zip::write::{FileOptions, ZipWriter};
 
 struct TeeReader<'a, R: 'a + Read, W: 'a + Write> {

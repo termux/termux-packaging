@@ -4,7 +4,6 @@ use std::fs;
 use std::io::Read;
 use std::path;
 use std::process;
-use tar;
 
 struct CheckRepoVisitor {
     current_package_name: String,

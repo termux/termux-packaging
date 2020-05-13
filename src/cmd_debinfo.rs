@@ -2,7 +2,6 @@ use crate::deb_file;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::Read;
-use tar;
 
 pub fn print(file_path: &str) {
     let mut deb_file = File::open(file_path).unwrap();

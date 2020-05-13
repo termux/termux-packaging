@@ -1,10 +1,5 @@
-use ar;
-use libflate;
-use lzma;
-use std;
 use std::collections::HashMap;
 use std::io::{BufRead, Read};
-use tar;
 
 pub trait DebVisitor {
     fn visit_control(&mut self, fields: HashMap<String, String>);
