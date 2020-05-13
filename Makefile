@@ -1,7 +1,8 @@
+RUST_VERSION=1.43.1
 IMAGE=termux/packaging
 
 linux-static-executable:
-	docker run --rm -v "$(PWD)":/build fredrikfornwall/rust-static-builder:1.41.0
+	docker run --rm -v "$(PWD)":/build fredrikfornwall/rust-static-builder:$(RUST_VERSION)
 
 docker-image: linux-static-executable
 	docker build -t $(IMAGE) .
