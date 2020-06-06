@@ -324,6 +324,7 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 
 	# Additional.
 	pull_package ed
+	pull_package debianutils
 	pull_package dos2unix
 	pull_package inetutils
 	pull_package net-tools
