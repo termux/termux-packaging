@@ -323,7 +323,6 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	pull_package xz-utils
 
 	# Additional.
-	pull_package busybox
 	pull_package ed
 	pull_package dos2unix
 	pull_package inetutils
