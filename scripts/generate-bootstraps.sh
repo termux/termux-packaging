@@ -328,10 +328,10 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	pull_package dos2unix
 	pull_package inetutils
 	pull_package lsof
+	pull_package nano
 	pull_package net-tools
 	pull_package patch
 	pull_package unzip
-	pull_package vim
 
 
 	# Handle additional packages.
