@@ -8,6 +8,10 @@ set -e
 BOOTSTRAP_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/bootstrap-tmp.XXXXXXXX")
 trap 'rm -rf $BOOTSTRAP_TMPDIR' EXIT
 
+# By default, bootstrap archives are compatible with Android >=7.0
+# and <10.
+BOOTSTRAP_ANDROID10_COMPATIBLE=false
+
 # By default, bootstrap archives will be built for all architectures
 # supported by Termux application.
 # Override with option '--architectures'.
@@ -188,6 +192,8 @@ show_usage() {
 	echo
 	echo " -h, --help                  Show this help."
 	echo
+	echo " --android10                 Generate bootstrap archives for Android 10."
+	echo
 	echo " -a, --add PKG_LIST          Specify one or more additional packages"
 	echo "                             to include into bootstrap archive."
 	echo "                             Multiple packages should be passed as"
@@ -217,6 +223,9 @@ while (($# > 0)); do
 		-h|--help)
 			show_usage
 			exit 0
+			;;
+		--android10)
+			BOOTSTRAP_ANDROID10_COMPATIBLE=true
 			;;
 		-a|--add)
 			if [ $# -gt 1 ] && [ -n "$2" ] && [[ $2 != -* ]]; then
@@ -279,16 +288,18 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	BOOTSTRAP_PKGDIR="$BOOTSTRAP_TMPDIR/packages-${package_arch}"
 
 	# Create initial directories for $TERMUX_PREFIX
-	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/etc/apt/apt.conf.d"
-	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/etc/apt/preferences.d"
+	if ! ${BOOTSTRAP_ANDROID10_COMPATIBLE}; then
+		mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/etc/apt/apt.conf.d"
+		mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/etc/apt/preferences.d"
+		mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/cache/apt/archives/partial"
+		mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info"
+		mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/triggers"
+		mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/updates"
+		mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/log/apt"
+		touch "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/available"
+		touch "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
+	fi
 	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/tmp"
-	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/cache/apt/archives/partial"
-	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info"
-	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/triggers"
-	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/updates"
-	mkdir -p "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/log/apt"
-	touch "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/available"
-	touch "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
 
 	# Read package metadata.
 	unset PACKAGE_METADATA
@@ -296,14 +307,18 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	read_package_list "$package_arch"
 
 	# Package manager.
-	pull_package apt
-	pull_package game-repo
-	pull_package science-repo
+	if ! ${BOOTSTRAP_ANDROID10_COMPATIBLE}; then
+		pull_package apt
+		pull_package game-repo
+		pull_package science-repo
+	fi
 
 	# Core utilities.
 	pull_package bash
 	pull_package bzip2
-	pull_package command-not-found
+	if ! ${BOOTSTRAP_ANDROID10_COMPATIBLE}; then
+		pull_package command-not-found
+	fi
 	pull_package coreutils
 	pull_package curl
 	pull_package dash
@@ -332,7 +347,6 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	pull_package net-tools
 	pull_package patch
 	pull_package unzip
-
 
 	# Handle additional packages.
 	for add_pkg in "${ADDITIONAL_PACKAGES[@]}"; do
