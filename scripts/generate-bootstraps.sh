@@ -138,26 +138,30 @@ pull_package() {
 
 			# Extract files.
 			tar xf "$data_archive" -C "$BOOTSTRAP_ROOTFS"
-			tar tf "$data_archive" | sed -e 's@^\./@/@' -e 's@^/$@/.@' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
 
-			# Generate checksums (md5).
-			tar xf "$data_archive"
-			find data -type f -print0 | xargs -0 -r md5sum | sed 's@^\.$@@g' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.md5sums"
+			if ! ${BOOTSTRAP_ANDROID10_COMPATIBLE}; then
+				# Register extracted files.
+				tar tf "$data_archive" | sed -e 's@^\./@/@' -e 's@^/$@/.@' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.list"
 
-			# Extract metadata.
-			tar xf "$control_archive"
-			{
-				cat control
-				echo "Status: install ok installed"
-				echo
-			} >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
+				# Generate checksums (md5).
+				tar xf "$data_archive"
+				find data -type f -print0 | xargs -0 -r md5sum | sed 's@^\.$@@g' > "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.md5sums"
 
-			# Additional data: conffiles & scripts
-			for file in conffiles postinst postrm preinst prerm; do
-				if [ -f "${PWD}/${file}" ]; then
-					cp "$file" "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.${file}"
-				fi
-			done
+				# Extract metadata.
+				tar xf "$control_archive"
+				{
+					cat control
+					echo "Status: install ok installed"
+					echo
+				} >> "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/status"
+
+				# Additional data: conffiles & scripts
+				for file in conffiles postinst postrm preinst prerm; do
+					if [ -f "${PWD}/${file}" ]; then
+						cp "$file" "${BOOTSTRAP_ROOTFS}/${TERMUX_PREFIX}/var/lib/dpkg/info/${package_name}.${file}"
+					fi
+				done
+			fi
 		)
 	fi
 }
