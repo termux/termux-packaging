@@ -321,6 +321,8 @@ for package_arch in "${TERMUX_ARCHITECTURES[@]}"; do
 	pull_package bzip2
 	if ! ${BOOTSTRAP_ANDROID10_COMPATIBLE}; then
 		pull_package command-not-found
+	else
+		pull_package proot
 	fi
 	pull_package coreutils
 	pull_package curl
