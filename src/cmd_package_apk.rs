@@ -48,9 +48,9 @@ impl DebVisitor for CreateApkVisitor {
                 self.file_mapping = format!("{}\n", self.file_mapping);
             }
             self.file_mapping =
-                format!("{}{}.so←{}", self.file_mapping, self.counter, relative_path);
+                format!("{}lib{}.so←{}", self.file_mapping, self.counter, relative_path);
 
-            let file_path = format!("{}/{}.so", self.output_directory, self.counter);
+            let file_path = format!("{}/lib{}.so", self.output_directory, self.counter);
             let mut output = File::create(file_path).unwrap();
             copy(file, &mut output).unwrap();
             self.counter += 1;
@@ -170,14 +170,14 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
 
             write_string_to_file(
                 &format!(
-                    "{}/app/src/main/jniLibs/{}/files.so",
+                    "{}/app/src/main/jniLibs/{}/libfiles.so",
                     output_dir, android_abi_name
                 ),
                 &visitor.file_mapping,
             );
             write_string_to_file(
                 &format!(
-                    "{}/app/src/main/jniLibs/{}/symlinks.so",
+                    "{}/app/src/main/jniLibs/{}/libsymlinks.so",
                     output_dir, android_abi_name
                 ),
                 &visitor.symlinks,
