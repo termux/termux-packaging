@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/termux/termux-packaging.svg?branch=master)](https://travis-ci.org/termux/termux-packaging)
+[![CI](https://github.com/termux/termux-packaging/workflows/CI/badge.svg)](https://github.com/termux/termux-packaging/actions?query=workflow%3ACI)
 
 # Termux packaging tools
 This project contains packaging tools for Termux written in Rust.
