@@ -51,16 +51,15 @@ impl deb_file::DebVisitor for CommandsNotFoundVisitor {
         let pp = file.path().unwrap();
         let file_path = pp.to_str().unwrap();
 
-        if file_path.starts_with("./data/data/com.termux/files/usr/bin/") {
+        if let Some(file_name) = file_path.strip_prefix("./data/data/com.termux/files/usr/bin/") {
             if self.first_file {
                 self.first_file = false;
                 let line: &str = &format!("\"{}\",\n", &mut self.current_package);
                 self.write_arch_line(line);
             }
 
-            let file_name = &file_path[37..];
-            let file_name = if file_name.starts_with("applets/") {
-                &file_name[8..]
+            let file_name = if let Some(stripped) = file_name.strip_prefix("applets/") {
+                stripped
             } else {
                 file_name
             };

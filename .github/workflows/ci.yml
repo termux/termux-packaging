@@ -1,0 +1,16 @@
+name: CI
+
+on: push
+
+jobs:
+  test-rust:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: hecrj/setup-rust-action@v1
+    - name: Show rust version
+      run: rustc --version
+    - name: Run tests
+      run: cargo test
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
