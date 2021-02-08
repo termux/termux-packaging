@@ -47,8 +47,10 @@ impl DebVisitor for CreateApkVisitor {
             if !self.file_mapping.is_empty() {
                 self.file_mapping = format!("{}\n", self.file_mapping);
             }
-            self.file_mapping =
-                format!("{}lib{}.so←{}", self.file_mapping, self.counter, relative_path);
+            self.file_mapping = format!(
+                "{}lib{}.so←{}",
+                self.file_mapping, self.counter, relative_path
+            );
 
             let file_path = format!("{}/lib{}.so", self.output_directory, self.counter);
             let mut output = File::create(file_path).unwrap();
