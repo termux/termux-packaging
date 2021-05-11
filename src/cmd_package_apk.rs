@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::fs::{rename, File};
 use std::io::{copy, ErrorKind, Read, Write};
 use std::os::unix::fs::PermissionsExt;
-use std::sync::{Arc, RwLock};
 use std::thread;
 
 pub struct CreateApkVisitor {
@@ -122,9 +121,6 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
         &android_manifest,
     );
 
-    let arch_all_packages = fetch_repo("all");
-    let arch_all_packages = Arc::new(RwLock::new(arch_all_packages));
-
     let mut join_handles = Vec::new();
     for arch in &["arm", "aarch64", "i686", "x86_64"] {
         // x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a
@@ -141,17 +137,14 @@ pub fn create_apk(package_name: &str, output_dir: &str, install: bool) {
             "{}/app/src/main/jniLibs/{}",
             output_dir, android_abi_name
         ));
-        let my_arch_all_packages = Arc::clone(&arch_all_packages);
 
         let output_dir = output_dir.to_string();
         let package_name = package_name.to_string();
         join_handles.push(thread::spawn(move || {
             let http_client = reqwest::blocking::Client::new();
             let packages = fetch_repo(arch);
-            let arch_all = my_arch_all_packages.read().unwrap();
             let bootstrap_package = packages
                 .get(&package_name)
-                .or_else(|| arch_all.get(&package_name))
                 .unwrap_or_else(|| panic!("Cannot find package '{}'", package_name));
             let package_url = bootstrap_package.package_url();
 

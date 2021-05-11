@@ -8,7 +8,7 @@ pub struct Package {
 impl Package {
     pub fn package_url(&self) -> String {
         return format!(
-            "https://dl.bintray.com/termux/termux-packages-24/{}",
+            "https://k51qzi5uqu5dg9vawh923wejqffxiu9bhqlze5f508msk0h7ylpac27fdgaskx.ipns.dweb.link/{}",
             self.fields.get("Filename").expect("No 'Filename")
         );
     }
@@ -16,7 +16,7 @@ impl Package {
 
 pub fn fetch_repo(arch: &str) -> HashMap<String, Package> {
     let url = format!(
-        "https://dl.bintray.com/termux/termux-packages-24/dists/stable/main/binary-{}/Packages",
+        "https://termux.org/packages/dists/stable/main/binary-{}/Packages",
         arch
     );
 
