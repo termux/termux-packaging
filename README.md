@@ -1,7 +1,10 @@
 [![CI](https://github.com/termux/termux-packaging/workflows/CI/badge.svg)](https://github.com/termux/termux-packaging/actions?query=workflow%3ACI)
 
+# This repository has been archived since it is not in use by any of Termux's component
+
 # Termux packaging tools
 This project contains packaging tools for Termux written in Rust.
+
 
 *NOTE*: This is my first Rust code, so suggestions for improvements are very welcome!
 
